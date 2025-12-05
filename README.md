@@ -1,4 +1,4 @@
-# Java Ollama Code Analyzer
+# AI Code Analyzer
 
 [简体中文](README.md) | [English](README_EN.md)
 
@@ -9,7 +9,7 @@
 项目已重构为模块化结构，以支持更好的扩展性：
 
 ```text
-coderchange/
+AICodeAnalyzer/
 ├── README.md              # 项目文档
 ├── requirements.txt       # Python 依赖
 ├── Dockerfile             # Docker 镜像定义 (新增) 🐳
