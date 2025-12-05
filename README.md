@@ -1,5 +1,7 @@
 # Java Ollama Code Analyzer
 
+[简体中文](README.md) | [English](README_EN.md)
+
 这是一个基于 Python 的工具，利用本地运行的 Ollama 大模型 (qwen2.5:0.5b) 来分析 Java 代码。它可以递归扫描指定目录，识别代码功能、潜在 Bug 和改进建议。
 
 ## 项目结构 (Project Structure)
