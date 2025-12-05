@@ -8,15 +8,19 @@
 
 项目已重构为模块化结构，以支持更好的扩展性：
 
+
 ```text
-AICodeAnalyzer/
+AICodeAnalyzer/ 
 ├── README.md              # 项目文档
+├── README_EN.md           # 英文文档
 ├── requirements.txt       # Python 依赖
-├── Dockerfile             # Docker 镜像定义 (新增) 🐳
-├── docker-compose.yml     # Docker Compose 配置 (新增) 🐳
-├── .dockerignore          # Docker 忽略文件 (新增) 🐳
-├── deploy.sh              # 部署脚本 (新增) 🐳
-├── DOCKER_DEPLOY.md       # Docker 部署文档 (新增) 🐳
+├── NEO4J_GUIDE.md         # Neo4j 使用指南
+├── DOCKER_DEPLOY.md       # Docker 部署文档
+├── docker/                # Docker 配置 🐳
+│   ├── README.md          # Docker 文档
+│   ├── Dockerfile         # Docker 镜像定义
+│   ├── docker-compose.yml # 服务编排配置
+│   └── deploy.sh          # 部署脚本
 ├── src/                   # 源代码目录
 │   ├── analyze_java.py    # 基础代码分析工具
 │   ├── analyze_impact.py  # 变动影响分析工具
@@ -24,11 +28,15 @@ AICodeAnalyzer/
 │   │   ├── __init__.py
 │   │   ├── ollama_client.py    # Ollama API 封装
 │   │   └── git_analyzer.py     # Git 变动分析
-│   └── prompts/           # 提示词模板模块
+│   ├── prompts/           # 提示词模板模块
+│   │   ├── __init__.py
+│   │   ├── java_analysis.py      # 代码分析提示词
+│   │   ├── impact_analysis.py    # 影响分析提示词
+│   │   └── knowledge_graph.py    # 知识图谱提取提示词
+│   └── graph/             # 图数据库模块 📊⭐
 │       ├── __init__.py
-│       ├── java_analysis.py      # 代码分析提示词
-│       ├── impact_analysis.py    # 影响分析提示词
-│       └── knowledge_graph.py    # 知识图谱提取提示词
+│       ├── neo4j_client.py       # Neo4j 客户端
+│       └── code_parser.py        # 代码解析器
 ├── web/                   # Web 界面 ⭐
 │   ├── app.py             # Flask Web 应用
 │   ├── templates/         # HTML 模板
@@ -40,13 +48,23 @@ AICodeAnalyzer/
 │   ├── server.py          # API 服务器
 │   ├── API_DOCS.md        # API 文档
 │   └── test_api.py        # API 测试脚本
+├── tests/                 # 测试目录 🧪
+│   ├── README.md          # 测试文档
+│   ├── TEST_REPORT.md     # 测试报告
+│   ├── PYTHON312_TEST_REPORT.md  # Python 3.12 测试报告
+│   └── graph/             # 图数据库测试
+│       ├── README.md      # 图测试文档
+│       ├── test_neo4j.py  # Neo4j 测试脚本
+│       └── graph_example.py  # 图数据库示例
 ├── examples/              # 示例代码
-│   └── Test.java          # 测试用例
+│   ├── Test.java          # 简单测试用例
+│   └── Application.java   # 复杂测试用例
 ├── analysis_results/      # 基础分析结果（自动生成）
 ├── impact_reports/        # 影响分析报告（自动生成）
 ├── web_reports/           # Web 界面报告（自动生成）
 └── api_reports/           # API 报告（自动生成）
 ```
+
 
 ## 功能特性
 
@@ -72,6 +90,7 @@ AICodeAnalyzer/
 **快速启动**:
 ```bash
 # 使用部署脚本（推荐）
+cd docker
 ./deploy.sh start
 
 # 或使用 docker-compose
@@ -90,6 +109,8 @@ docker-compose exec ollama ollama pull qwen2.5:0.5b
 
 详细部署文档: [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
 Neo4j 使用指南: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
+Docker 配置说明: [docker/README.md](docker/README.md)
+
 
 
 #### 方式二：本地安装
@@ -173,12 +194,13 @@ python3 src/analyze_impact.py /path/to/git/repo /path/to/reports
 
 ##### 1. 启动 Neo4j (Docker)
 ```bash
+cd docker
 docker-compose up -d neo4j
 ```
 
 ##### 2. 解析代码到图数据库
 ```bash
-python3 examples/graph_example.py examples/
+python3.12 tests/graph/graph_example.py examples/
 ```
 
 ##### 3. 查询图数据库
@@ -206,6 +228,8 @@ hierarchy = client.get_class_hierarchy("MyClass")
 - 🎯 影响范围评估
 
 详细使用指南: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
+测试文档: [tests/graph/README.md](tests/graph/README.md)
+
 
 
 ## 示例输出

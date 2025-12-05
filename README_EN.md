@@ -8,15 +8,19 @@ A Python-based tool that leverages locally-running Ollama LLM (qwen2.5:0.5b) to 
 
 The project has been refactored into a modular structure for better extensibility:
 
+
 ```text
 AICodeAnalyzer/ 
-├── README.md              # Project documentation
+├── README.md              # Project documentation (Chinese)
+├── README_EN.md           # Project documentation (English)
 ├── requirements.txt       # Python dependencies
-├── Dockerfile             # Docker image definition (New) 🐳
-├── docker-compose.yml     # Docker Compose configuration (New) 🐳
-├── .dockerignore          # Docker ignore file (New) 🐳
-├── deploy.sh              # Deployment script (New) 🐳
-├── DOCKER_DEPLOY.md       # Docker deployment documentation (New) 🐳
+├── NEO4J_GUIDE.md         # Neo4j usage guide
+├── DOCKER_DEPLOY.md       # Docker deployment documentation
+├── docker/                # Docker configuration 🐳
+│   ├── README.md          # Docker documentation
+│   ├── Dockerfile         # Docker image definition
+│   ├── docker-compose.yml # Service orchestration config
+│   └── deploy.sh          # Deployment script
 ├── src/                   # Source code directory
 │   ├── analyze_java.py    # Basic code analysis tool
 │   ├── analyze_impact.py  # Change impact analysis tool
@@ -24,11 +28,15 @@ AICodeAnalyzer/
 │   │   ├── __init__.py
 │   │   ├── ollama_client.py    # Ollama API wrapper
 │   │   └── git_analyzer.py     # Git change analyzer
-│   └── prompts/           # Prompt template module
+│   ├── prompts/           # Prompt template module
+│   │   ├── __init__.py
+│   │   ├── java_analysis.py      # Code analysis prompts
+│   │   ├── impact_analysis.py    # Impact analysis prompts
+│   │   └── knowledge_graph.py    # Knowledge graph extraction prompts
+│   └── graph/             # Graph database module 📊⭐
 │       ├── __init__.py
-│       ├── java_analysis.py      # Code analysis prompts
-│       ├── impact_analysis.py    # Impact analysis prompts
-│       └── knowledge_graph.py    # Knowledge graph extraction prompts
+│       ├── neo4j_client.py       # Neo4j client
+│       └── code_parser.py        # Code parser
 ├── web/                   # Web interface ⭐
 │   ├── app.py             # Flask web application
 │   ├── templates/         # HTML templates
@@ -40,13 +48,23 @@ AICodeAnalyzer/
 │   ├── server.py          # API server
 │   ├── API_DOCS.md        # API documentation
 │   └── test_api.py        # API test script
+├── tests/                 # Tests directory 🧪
+│   ├── README.md          # Test documentation
+│   ├── TEST_REPORT.md     # Test report
+│   ├── PYTHON312_TEST_REPORT.md  # Python 3.12 test report
+│   └── graph/             # Graph database tests
+│       ├── README.md      # Graph test documentation
+│       ├── test_neo4j.py  # Neo4j test script
+│       └── graph_example.py  # Graph database example
 ├── examples/              # Example code
-│   └── Test.java          # Test case
+│   ├── Test.java          # Simple test case
+│   └── Application.java   # Complex test case
 ├── analysis_results/      # Basic analysis results (auto-generated)
 ├── impact_reports/        # Impact analysis reports (auto-generated)
 ├── web_reports/           # Web interface reports (auto-generated)
 └── api_reports/           # API reports (auto-generated)
 ```
+
 
 ## Features
 
@@ -71,6 +89,7 @@ AICodeAnalyzer/
 **Quick Start**:
 ```bash
 # Using deployment script (recommended)
+cd docker
 ./deploy.sh start
 
 # Or using docker-compose
@@ -89,6 +108,7 @@ docker-compose exec ollama ollama pull qwen2.5:0.5b
 
 Detailed deployment documentation: [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
 Neo4j Usage Guide: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
+Docker Configuration: [docker/README.md](docker/README.md)
 
 #### Method 2: Local Installation
 
@@ -171,12 +191,13 @@ python3 src/analyze_impact.py /path/to/git/repo /path/to/reports
 
 ##### 1. Start Neo4j (Docker)
 ```bash
+cd docker
 docker-compose up -d neo4j
 ```
 
 ##### 2. Parse code into graph database
 ```bash
-python3 examples/graph_example.py examples/
+python3.12 tests/graph/graph_example.py examples/
 ```
 
 ##### 3. Query graph database
@@ -204,6 +225,7 @@ hierarchy = client.get_class_hierarchy("MyClass")
 - 🎯 Impact scope assessment
 
 Detailed usage guide: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
+Test documentation: [tests/graph/README.md](tests/graph/README.md)
 
 
 ## Example Output
