@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Ollama Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: code-analyzer-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Code Analyzer API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: code-analyzer-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434
+    volumes:
+      - ./api_reports:/app/api_reports
+      - ./examples:/app/examples:ro
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    command: python3 api/server.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Code Analyzer Web UI
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: code-analyzer-web
+    ports:
+      - "5001:5001"
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434
+    volumes:
+      - ./web_reports:/app/web_reports
+      - ./examples:/app/examples:ro
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    command: python3 web/app.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  ollama_data:
+    driver: local
+
+networks:
+  default:
+    name: code-analyzer-network

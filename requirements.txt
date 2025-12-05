@@ -1,2 +1,5 @@
 requests
 gitpython
+flask
+flask-cors
+markdown

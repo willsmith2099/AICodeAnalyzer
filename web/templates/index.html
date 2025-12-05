@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Analyzer - AI 代码分析工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🤖 AI Code Analyzer</h1>
+            <p class="subtitle">基于 Ollama 的智能代码分析平台</p>
+            <div class="status" id="status">
+                <span class="status-dot"></span>
+                <span id="status-text">检查中...</span>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="analyze">代码分析</button>
+            <button class="tab" data-tab="reports">分析报告</button>
+            <button class="tab" data-tab="repo">仓库分析</button>
+        </nav>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Analyze Tab -->
+            <div id="analyze-tab" class="tab-pane active">
+                <div class="card">
+                    <h2>📝 代码分析</h2>
+                    <div class="form-group">
+                        <label for="language">编程语言</label>
+                        <select id="language" class="form-control">
+                            <option value="java">Java</option>
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="code-input">代码内容</label>
+                        <textarea id="code-input" class="code-editor" placeholder="粘贴您的代码..."></textarea>
+                    </div>
+                    
+                    <button id="analyze-btn" class="btn btn-primary">
+                        <span class="btn-text">开始分析</span>
+                        <span class="spinner" style="display: none;"></span>
+                    </button>
+                    
+                    <div id="analysis-result" class="result-container" style="display: none;">
+                        <h3>分析结果</h3>
+                        <div id="analysis-content" class="markdown-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports-tab" class="tab-pane">
+                <div class="card">
+                    <h2>📊 分析报告</h2>
+                    <div class="reports-filter">
+                        <input type="text" id="search-reports" class="form-control" placeholder="搜索报告...">
+                        <select id="filter-type" class="form-control">
+                            <option value="all">所有类型</option>
+                            <option value="quality">质量报告</option>
+                            <option value="impact">影响分析</option>
+                            <option value="analysis">代码分析</option>
+                        </select>
+                    </div>
+                    
+                    <div id="reports-list" class="reports-list">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+                
+                <!-- Report Viewer Modal -->
+                <div id="report-modal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h2 id="report-title">报告详情</h2>
+                        <div id="report-content" class="markdown-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Repository Tab -->
+            <div id="repo-tab" class="tab-pane">
+                <div class="card">
+                    <h2>🔍 仓库分析</h2>
+                    <div class="form-group">
+                        <label for="repo-path">仓库路径</label>
+                        <input type="text" id="repo-path" class="form-control" value="." placeholder="/path/to/repository">
+                    </div>
+                    
+                    <button id="scan-repo-btn" class="btn btn-primary">
+                        <span class="btn-text">扫描仓库</span>
+                        <span class="spinner" style="display: none;"></span>
+                    </button>
+                    
+                    <div id="repo-files" class="files-list" style="display: none;">
+                        <h3>发现的文件</h3>
+                        <div id="files-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
