@@ -9,7 +9,7 @@ A Python-based tool that leverages locally-running Ollama LLM (qwen2.5:0.5b) to 
 The project has been refactored into a modular structure for better extensibility:
 
 ```text
-coderchange/
+AICodeAnalyzer/ 
 ├── README.md              # Project documentation
 ├── requirements.txt       # Python dependencies
 ├── Dockerfile             # Docker image definition (New) 🐳
