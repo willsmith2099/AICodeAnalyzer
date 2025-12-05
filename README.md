@@ -52,6 +52,7 @@ AICodeAnalyzer/
 
 -   **REST API** 🚀⭐: 完整的 RESTful API 接口，支持程序化调用。
 -   **Web 界面** 🌐⭐: 现代化的 Web 界面，支持在线代码分析和报告浏览。
+-   **Neo4j 图数据库** 📊⭐: 将代码结构存储为知识图谱，支持复杂查询和可视化。
 -   **代码分析**: 自动分析 Java、Python、JavaScript 等代码的功能、Bug 和改进点。
 -   **变动影响分析** ⭐: 基于 Git 历史分析代码变动的影响范围。
 -   **质量报告生成** ⭐: 自动生成包含质量评分、风险评估的专业报告。
@@ -59,6 +60,7 @@ AICodeAnalyzer/
 -   **知识图谱支持**: 内置知识图谱提取提示词模板 (可扩展)。
 -   **结果输出**: 支持将分析结果保存到指定目录的 Markdown 文件。
 -   **批量处理**: 递归扫描目录下所有代码文件。
+
 
 
 ## 使用说明
@@ -84,8 +86,11 @@ docker-compose exec ollama ollama pull qwen2.5:0.5b
 **访问服务**:
 - Web 界面: http://localhost:5001
 - API 服务: http://localhost:8000
+- Neo4j 浏览器: http://localhost:7474 (用户名: neo4j, 密码: password)
 
 详细部署文档: [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
+Neo4j 使用指南: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
+
 
 #### 方式二：本地安装
 
@@ -161,6 +166,46 @@ python3 src/analyze_impact.py /path/to/git/repo /path/to/reports
 - 变动影响评估
 - 测试建议
 - 行动项清单
+
+#### 模式四：Neo4j 知识图谱 📊⭐
+
+**前提条件**: Neo4j 数据库运行中
+
+##### 1. 启动 Neo4j (Docker)
+```bash
+docker-compose up -d neo4j
+```
+
+##### 2. 解析代码到图数据库
+```bash
+python3 examples/graph_example.py examples/
+```
+
+##### 3. 查询图数据库
+```python
+from src.graph.neo4j_client import Neo4jClient
+
+client = Neo4jClient()
+
+# 获取统计信息
+stats = client.get_statistics()
+print(f"类: {stats['classes']}, 方法: {stats['methods']}")
+
+# 搜索方法
+methods = client.search_methods_by_name("process")
+
+# 获取类层次结构
+hierarchy = client.get_class_hierarchy("MyClass")
+```
+
+**图数据库功能**:
+- 🔍 代码结构可视化
+- 📊 依赖关系分析
+- 🔗 方法调用链追踪
+- 📈 继承层次查询
+- 🎯 影响范围评估
+
+详细使用指南: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
 
 
 ## 示例输出
@@ -253,6 +298,8 @@ client = OllamaClient(model="qwen2.5:7b")  # 使用更大的模型
 - **Flask** - Web 框架
 - **Flask-CORS** - CORS 支持
 - **Markdown** - Markdown 渲染库
+- **Neo4j** - 图数据库
+
 
 ## 开发计划
 
@@ -267,9 +314,11 @@ client = OllamaClient(model="qwen2.5:7b")  # 使用更大的模型
 - [x] 支持多种编程语言（Java, Python, JavaScript 等）
 - [x] REST API 接口开发
 - [x] Docker 容器化部署
+- [x] Neo4j 图数据库集成
 - [ ] 集成 CI/CD 流程
 - [ ] 认证和授权系统
 - [ ] 性能监控和日志系统
+
 
 ## 许可证
 

@@ -52,6 +52,7 @@ AICodeAnalyzer/
 
 -   **REST API** 🚀⭐: Complete RESTful API interface supporting programmatic calls.
 -   **Web Interface** 🌐⭐: Modern web interface supporting online code analysis and report browsing.
+-   **Neo4j Graph Database** 📊⭐: Store code structure as knowledge graph with support for complex queries and visualization.
 -   **Code Analysis**: Automatically analyze Java, Python, JavaScript and other code for functionality, bugs, and improvements.
 -   **Change Impact Analysis** ⭐: Analyze the impact scope of code changes based on Git history.
 -   **Quality Report Generation** ⭐: Automatically generate professional reports with quality scores and risk assessments.
@@ -84,8 +85,10 @@ docker-compose exec ollama ollama pull qwen2.5:0.5b
 **Access Services**:
 - Web Interface: http://localhost:5001
 - API Service: http://localhost:8000
+- Neo4j Browser: http://localhost:7474 (username: neo4j, password: password)
 
 Detailed deployment documentation: [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
+Neo4j Usage Guide: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
 
 #### Method 2: Local Installation
 
@@ -161,6 +164,46 @@ python3 src/analyze_impact.py /path/to/git/repo /path/to/reports
 - Change impact assessment
 - Testing recommendations
 - Action item checklist
+
+#### Mode 4: Neo4j Knowledge Graph 📊⭐
+
+**Prerequisites**: Neo4j database running
+
+##### 1. Start Neo4j (Docker)
+```bash
+docker-compose up -d neo4j
+```
+
+##### 2. Parse code into graph database
+```bash
+python3 examples/graph_example.py examples/
+```
+
+##### 3. Query graph database
+```python
+from src.graph.neo4j_client import Neo4jClient
+
+client = Neo4jClient()
+
+# Get statistics
+stats = client.get_statistics()
+print(f"Classes: {stats['classes']}, Methods: {stats['methods']}")
+
+# Search methods
+methods = client.search_methods_by_name("process")
+
+# Get class hierarchy
+hierarchy = client.get_class_hierarchy("MyClass")
+```
+
+**Graph Database Features**:
+- 🔍 Code structure visualization
+- 📊 Dependency analysis
+- 🔗 Method call chain tracking
+- 📈 Inheritance hierarchy queries
+- 🎯 Impact scope assessment
+
+Detailed usage guide: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
 
 
 ## Example Output
@@ -253,6 +296,7 @@ client = OllamaClient(model="qwen2.5:7b")  # Use a larger model
 - **Flask** - Web framework
 - **Flask-CORS** - CORS support
 - **Markdown** - Markdown rendering library
+- **Neo4j** - Graph database
 
 ## Development Roadmap
 
@@ -267,6 +311,7 @@ client = OllamaClient(model="qwen2.5:7b")  # Use a larger model
 - [x] Support for multiple programming languages (Java, Python, JavaScript, etc.)
 - [x] REST API interface development
 - [x] Docker containerized deployment
+- [x] Neo4j graph database integration
 - [ ] CI/CD pipeline integration
 - [ ] Authentication and authorization system
 - [ ] Performance monitoring and logging system
