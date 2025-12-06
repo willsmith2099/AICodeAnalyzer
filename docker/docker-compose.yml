@@ -1,38 +1,21 @@
 version: '3.8'
 
 services:
-  # Ollama Service
-  ollama:
-    image: ollama/ollama:latest
-    container_name: code-analyzer-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:11434/api/tags" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
   # Code Analyzer API
   api:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: code-analyzer-api
     ports:
       - "8000:8000"
     environment:
-      - OLLAMA_API_URL=http://ollama:11434
+      # 使用宿主机的 Ollama 服务
+      # host.docker.internal 指向宿主机
+      - OLLAMA_API_URL=http://host.docker.internal:11434
     volumes:
       - ./api_reports:/app/api_reports
       - ./examples:/app/examples:ro
-    depends_on:
-      ollama:
-        condition: service_healthy
     restart: unless-stopped
     command: python3 api/server.py
     healthcheck:
@@ -41,17 +24,20 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # Code Analyzer Web UI
   web:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: code-analyzer-web
     ports:
       - "5001:5001"
     environment:
-      - OLLAMA_API_URL=http://ollama:11434
+      # 使用宿主机的 Ollama 服务
+      - OLLAMA_API_URL=http://host.docker.internal:11434
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=password
@@ -59,8 +45,6 @@ services:
       - ./web_reports:/app/web_reports
       - ./examples:/app/examples:ro
     depends_on:
-      ollama:
-        condition: service_healthy
       neo4j:
         condition: service_healthy
     restart: unless-stopped
@@ -71,6 +55,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # Neo4j Graph Database
   neo4j:
@@ -97,8 +83,6 @@ services:
       start_period: 40s
 
 volumes:
-  ollama_data:
-    driver: local
   neo4j_data:
     driver: local
   neo4j_logs:

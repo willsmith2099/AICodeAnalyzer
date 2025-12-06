@@ -58,5 +58,9 @@ output.txt
 # Docker
 .dockerignore
 
+# Docker test reports (temporary)
+docker/TEST_REPORT.md
+docker/DOCKER_TEST_SUMMARY.md
+
 # OS
 Thumbs.db
