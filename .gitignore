@@ -48,6 +48,12 @@ analysis_reports/
 # Test files
 test_echo.txt
 output.txt
+test_output.txt
+test_agent.py
+minimal_test.py
+verification_result.txt
+agent_test_output.log
+minimal_test.log
 
 # Temporary files
 *.tmp

@@ -14,10 +14,21 @@ AICodeAnalyzer/
 ├── README.md              # 项目文档
 ├── README_EN.md           # 英文文档
 ├── requirements.txt       # Python 依赖
-├── NEO4J_GUIDE.md         # Neo4j 使用指南
-├── DOCKER_DEPLOY.md       # Docker 部署文档
-├── DIRECTORY_SCANNER_GUIDE.md  # 目录扫描器使用指南
-├── LANGCHAIN_AGENT_GUIDE.md    # LangChain 智能代理指南 🤖⭐
+├── docs/                  # 文档目录 📚
+│   ├── README.md          # 文档索引
+│   ├── guides/            # 使用指南
+│   │   ├── DIRECTORY_SCANNER_GUIDE.md  # 目录扫描器指南
+│   │   ├── LANGCHAIN_AGENT_GUIDE.md    # LangChain 智能代理指南
+│   │   ├── AGENT_VERIFICATION_GUIDE.md # 智能代理验证指南
+│   │   ├── QUICKSTART_LANGCHAIN.md     # LangChain 快速开始
+│   │   ├── DOCKER_DEPLOY.md            # Docker 部署指南
+│   │   └── NEO4J_GUIDE.md              # Neo4j 使用指南
+│   └── reports/           # 项目报告
+│       ├── PROJECT_SUMMARY.md          # 项目总结
+│       ├── GIT_COMMIT_SUMMARY.md       # Git 提交总结
+│       ├── LANGCHAIN_INTEGRATION_SUMMARY.md  # LangChain 集成总结
+│       ├── LANGCHAIN_COMPLETION_REPORT.md    # LangChain 完成报告
+│       └── AGENT_VERIFICATION_SUMMARY.md     # 智能代理验证总结
 ├── docker/                # Docker 配置 🐳
 │   ├── README.md          # Docker 文档
 │   ├── Dockerfile         # Docker 镜像定义
@@ -117,8 +128,8 @@ docker-compose exec ollama ollama pull qwen2.5:0.5b
 - API 服务: http://localhost:8000
 - Neo4j 浏览器: http://localhost:7474 (用户名: neo4j, 密码: password)
 
-详细部署文档: [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
-Neo4j 使用指南: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
+详细部署文档: [DOCKER_DEPLOY.md](docs/guides/DOCKER_DEPLOY.md)
+Neo4j 使用指南: [NEO4J_GUIDE.md](docs/guides/NEO4J_GUIDE.md)
 Docker 配置说明: [docker/README.md](docker/README.md)
 
 
@@ -256,7 +267,7 @@ python3 examples/langchain_agent_demo.py
 - 支持多轮推理和工具调用
 - 生成详细的分析计划和执行报告
 
-详细使用指南: [LANGCHAIN_AGENT_GUIDE.md](LANGCHAIN_AGENT_GUIDE.md)
+详细使用指南: [LANGCHAIN_AGENT_GUIDE.md](docs/guides/LANGCHAIN_AGENT_GUIDE.md)
 
 #### 模式四：Neo4j 知识图谱 📊⭐
 
@@ -297,7 +308,7 @@ hierarchy = client.get_class_hierarchy("MyClass")
 - 📈 继承层次查询
 - 🎯 影响范围评估
 
-详细使用指南: [NEO4J_GUIDE.md](NEO4J_GUIDE.md)
+详细使用指南: [NEO4J_GUIDE.md](docs/guides/NEO4J_GUIDE.md)
 测试文档: [tests/graph/README.md](tests/graph/README.md)
 
 
