@@ -40,6 +40,7 @@ analysis_results/
 impact_reports/
 web_reports/
 api_reports/
+analysis_reports/
 
 # Logs
 *.log
