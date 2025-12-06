@@ -8,7 +8,7 @@ import sys
 import os
 
 # 添加 src 到路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src'))
 
 from agent.langchain_agent import CodeAnalysisAgent
 import json
