@@ -62,15 +62,17 @@ class Neo4jClient:
             language: Programming language
             metadata: Additional metadata
         """
+        import json
         with self.driver.session() as session:
             query = """
             MERGE (f:File {path: $path})
             SET f.language = $language,
-                f.metadata = $metadata
+                f.metadata_json = $metadata_json
             RETURN f
             """
+            metadata_json = json.dumps(metadata or {})
             session.run(query, path=file_path, language=language, 
-                       metadata=metadata or {})
+                       metadata_json=metadata_json)
             logger.info(f"Created File node: {file_path}")
     
     def create_class_node(self, class_name: str, file_path: str, 
@@ -86,19 +88,21 @@ class Neo4jClient:
             line_end: Ending line number
             metadata: Additional metadata (modifiers, annotations, etc.)
         """
+        import json
         with self.driver.session() as session:
             query = """
             MATCH (f:File {path: $file_path})
             MERGE (c:Class {name: $class_name, file_path: $file_path})
             SET c.line_start = $line_start,
                 c.line_end = $line_end,
-                c.metadata = $metadata
+                c.metadata_json = $metadata_json
             MERGE (f)-[:CONTAINS]->(c)
             RETURN c
             """
+            metadata_json = json.dumps(metadata or {})
             session.run(query, class_name=class_name, file_path=file_path,
                        line_start=line_start, line_end=line_end,
-                       metadata=metadata or {})
+                       metadata_json=metadata_json)
             logger.info(f"Created Class node: {class_name}")
     
     def create_method_node(self, method_name: str, class_name: str, 
@@ -118,22 +122,25 @@ class Neo4jClient:
             return_type: Return type of the method
             metadata: Additional metadata (modifiers, annotations, etc.)
         """
+        import json
         with self.driver.session() as session:
             query = """
             MATCH (c:Class {name: $class_name, file_path: $file_path})
             MERGE (m:Method {name: $method_name, class_name: $class_name, file_path: $file_path})
             SET m.line_start = $line_start,
                 m.line_end = $line_end,
-                m.parameters = $parameters,
+                m.parameters_json = $parameters_json,
                 m.return_type = $return_type,
-                m.metadata = $metadata
+                m.metadata_json = $metadata_json
             MERGE (c)-[:HAS_METHOD]->(m)
             RETURN m
             """
+            parameters_json = json.dumps(parameters or [])
+            metadata_json = json.dumps(metadata or {})
             session.run(query, method_name=method_name, class_name=class_name,
                        file_path=file_path, line_start=line_start, 
-                       line_end=line_end, parameters=parameters or [],
-                       return_type=return_type, metadata=metadata or {})
+                       line_end=line_end, parameters_json=parameters_json,
+                       return_type=return_type, metadata_json=metadata_json)
             logger.info(f"Created Method node: {class_name}.{method_name}")
     
     def create_method_call(self, caller_method: str, caller_class: str,

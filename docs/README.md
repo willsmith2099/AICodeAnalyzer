@@ -12,14 +12,17 @@ docs/
 │   ├── AGENT_VERIFICATION_GUIDE.md     # 智能代理验证指南
 │   ├── QUICKSTART_LANGCHAIN.md         # LangChain 快速开始
 │   ├── DOCKER_DEPLOY.md                # Docker 部署指南
-│   └── NEO4J_GUIDE.md                  # Neo4j 使用指南
+│   ├── NEO4J_GUIDE.md                  # Neo4j 使用指南
+│   ├── INCREMENTAL_ANALYSIS_GUIDE.md   # 增量代码分析指南 ⚡⭐
+│   └── INCREMENTAL_ANALYSIS_QUICKREF.md # 增量分析快速参考 ⚡
 │
 └── reports/         # 项目报告和总结
     ├── PROJECT_SUMMARY.md              # 项目总结
     ├── GIT_COMMIT_SUMMARY.md           # Git 提交总结
     ├── LANGCHAIN_INTEGRATION_SUMMARY.md # LangChain 集成总结
     ├── LANGCHAIN_COMPLETION_REPORT.md  # LangChain 完成报告
-    └── AGENT_VERIFICATION_SUMMARY.md   # 智能代理验证总结
+    ├── AGENT_VERIFICATION_SUMMARY.md   # 智能代理验证总结
+    └── INCREMENTAL_ANALYSIS_IMPLEMENTATION.md # 增量分析实现总结 ⚡⭐
 ```
 
 ## 📖 使用指南 (guides/)
@@ -43,6 +46,26 @@ docs/
   - 智能代理验证步骤
   - 手动测试方法
   - 常见问题解决
+
+- **[INCREMENTAL_ANALYSIS_GUIDE.md](guides/INCREMENTAL_ANALYSIS_GUIDE.md)** ⚡⭐
+  - 增量代码分析完整指南
+  - 智能变更检测机制
+  - 缓存管理和优化
+  - 使用场景和最佳实践
+  - API 参考文档
+
+- **[INCREMENTAL_ANALYSIS_QUICKREF.md](guides/INCREMENTAL_ANALYSIS_QUICKREF.md)** ⚡
+  - 增量分析快速参考卡
+  - 常用命令速查
+  - 使用场景示例
+  - 故障排除快速指南
+
+- **[KNOWLEDGE_GRAPH_BUILDER_GUIDE.md](guides/KNOWLEDGE_GRAPH_BUILDER_GUIDE.md)** 📊⭐
+  - 代码知识图谱构建完整指南
+  - 图谱结构和节点类型
+  - Cypher 查询示例
+  - 可视化和分析方法
+  - API 参考和最佳实践
 
 ### 快速开始
 
@@ -94,6 +117,13 @@ docs/
   - 功能测试结果
   - 使用建议
 
+- **[INCREMENTAL_ANALYSIS_IMPLEMENTATION.md](reports/INCREMENTAL_ANALYSIS_IMPLEMENTATION.md)** ⚡⭐
+  - 增量代码分析实现总结
+  - 核心功能特性
+  - 技术实现细节
+  - 性能优化效果
+  - 后续优化建议
+
 ## 🚀 快速导航
 
 ### 新手入门
@@ -104,6 +134,8 @@ docs/
 ### 功能使用
 - 代码扫描: [DIRECTORY_SCANNER_GUIDE.md](guides/DIRECTORY_SCANNER_GUIDE.md)
 - 智能分析: [LANGCHAIN_AGENT_GUIDE.md](guides/LANGCHAIN_AGENT_GUIDE.md)
+- 增量分析: [INCREMENTAL_ANALYSIS_GUIDE.md](guides/INCREMENTAL_ANALYSIS_GUIDE.md) ⚡⭐
+- 知识图谱: [KNOWLEDGE_GRAPH_BUILDER_GUIDE.md](guides/KNOWLEDGE_GRAPH_BUILDER_GUIDE.md) 📊⭐
 - 图数据库: [NEO4J_GUIDE.md](guides/NEO4J_GUIDE.md)
 
 ### 技术深入

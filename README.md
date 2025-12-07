@@ -2,12 +2,13 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-这是一个基于 Python 和 **LangChain** 的智能代码分析工具，利用本地运行的 Ollama 大模型 (qwen2.5:0.5b) 来分析代码。它集成了 **LangChain 智能代理框架**，基于 ReAct (Reasoning + Acting) 架构，能够自主规划分析任务、选择合适的工具，并提供深度的代码质量分析、安全审查和改进建议。
+一个基于 Python 和LangChain的智能代码分析工具，利用本地运行的 Ollama 大模型 (qwen2.5:0.5b) 来分析代码。集成了LangChain智能代理框架，能够自主规划分析任务、选择合适的工具，并提供深度的代码质量分析、安全审查和改进建议。
 
 ### 核心特性
 
 - 🤖 **LangChain 智能代理** - 基于 ReAct 框架的自主规划和工具调用
 - 🔍 **智能目录扫描** - 递归扫描并批量分析多种编程语言
+- ⚡ **增量代码分析** - 只分析新增或修改的文件，提高分析效率
 - 📊 **Neo4j 知识图谱** - 将代码结构存储为可查询的图数据库
 - 🌐 **Web 界面** - 现代化的在线代码分析平台
 - 🚀 **REST API** - 完整的 RESTful API 接口
@@ -48,6 +49,8 @@ AICodeAnalyzer/
 │   ├── analyze_impact.py  # 变动影响分析工具
 │   ├── directory_scanner.py  # 目录扫描器
 │   ├── intelligent_scanner.py  # 智能目录扫描器 🤖⭐
+│   ├── incremental_analyzer.py  # 增量代码分析器 ⚡⭐
+│   ├── knowledge_graph_builder.py  # 代码知识图谱构建器 📊⭐
 │   ├── agent/             # LangChain 智能代理模块 🤖⭐
 │   │   ├── __init__.py
 │   │   └── langchain_agent.py   # 智能代码分析代理
@@ -101,6 +104,8 @@ AICodeAnalyzer/
 -   **Web 界面** 🌐⭐: 现代化的 Web 界面，支持在线代码分析和报告浏览。
 -   **Neo4j 图数据库** 📊⭐: 将代码结构存储为知识图谱，支持复杂查询和可视化。
 -   **LangChain 智能代理** 🤖⭐: 基于 ReAct 框架的智能代码分析代理，支持自主规划和工具调用。
+-   **增量代码分析** ⚡⭐: 智能检测新增和修改的文件，只分析需要的代码，大幅提升效率。
+-   **代码知识图谱构建** 📊⭐: 自动扫描代码工程，提取结构信息并构建可查询的知识图谱。
 -   **代码分析**: 自动分析 Java、Python、JavaScript 等代码的功能、Bug 和改进点。
 -   **变动影响分析** ⭐: 基于 Git 历史分析代码变动的影响范围。
 -   **质量报告生成** ⭐: 自动生成包含质量评分、风险评估的专业报告。
@@ -320,6 +325,204 @@ hierarchy = client.get_class_hierarchy("MyClass")
 详细使用指南: [NEO4J_GUIDE.md](docs/guides/NEO4J_GUIDE.md)
 测试文档: [tests/graph/README.md](tests/graph/README.md)
 
+#### 模式五：增量代码分析 ⚡⭐
+
+**功能**: 智能检测新增和修改的文件，只分析需要的代码，大幅提升分析效率
+
+##### 1. 基本用法
+
+```bash
+# 增量分析当前项目
+python3 src/incremental_analyzer.py . -o incremental_reports
+
+# 增量分析指定目录
+python3 src/incremental_analyzer.py /path/to/project -o reports
+```
+
+##### 2. 首次运行
+
+首次运行时，所有文件都会被分析并缓存：
+
+```bash
+python3 src/incremental_analyzer.py examples/ -o incremental_reports
+```
+
+输出示例：
+```
+📈 文件分类统计:
+  - 总文件数: 3
+  - 新文件: 3
+  - 已修改: 0
+  - 未更改: 0
+
+🎯 将分析 3 个文件
+```
+
+##### 3. 后续运行
+
+再次运行时，只会分析新增或修改的文件：
+
+```bash
+python3 src/incremental_analyzer.py examples/ -o incremental_reports
+```
+
+如果没有文件更改：
+```
+✅ 没有需要分析的文件！所有文件都是最新的。
+```
+
+##### 4. 高级选项
+
+```bash
+# 强制分析所有文件（忽略缓存）
+python3 src/incremental_analyzer.py . -o reports --force
+
+# 只分析特定类型的文件
+python3 src/incremental_analyzer.py . -o reports -e .py .java
+
+# 查看缓存信息
+python3 src/incremental_analyzer.py . --show-cache
+
+# 清空缓存
+python3 src/incremental_analyzer.py . --clear-cache
+
+# 不使用 Git 检测（使用文件哈希）
+python3 src/incremental_analyzer.py . -o reports --no-git
+```
+
+**增量分析特性**:
+- 🎯 智能变更检测 - 自动识别新增和修改的文件
+- 📦 缓存管理 - 维护已分析文件的缓存
+- 🔍 双重检测模式 - 支持 Git 变更检测和文件哈希检测
+- ⚡ 高效分析 - 只分析需要的文件，节省时间
+- 📊 详细报告 - 生成包含变更统计的增量分析报告
+
+**工作原理**:
+- Git 模式：检测 Git 仓库中的变更文件
+- 哈希模式：计算文件 MD5 哈希值比对
+- 缓存机制：存储已分析文件的信息
+- 智能过滤：自动跳过未更改的文件
+
+详细使用指南: [INCREMENTAL_ANALYSIS_GUIDE.md](docs/guides/INCREMENTAL_ANALYSIS_GUIDE.md)
+
+#### 模式六：代码知识图谱构建 📊⭐
+
+**功能**: 扫描指定目录下的代码工程，自动提取代码结构并构建到 Neo4j 知识图谱中
+
+**前提条件**: Neo4j 数据库运行中
+
+##### 1. 启动 Neo4j
+
+```bash
+# 使用 Docker 启动
+cd docker
+docker-compose up -d neo4j
+
+# 访问 Neo4j 浏览器
+# http://localhost:7474
+# 用户名: neo4j, 密码: password
+```
+
+##### 2. 基本用法
+
+```bash
+# 构建当前项目的知识图谱
+python3 src/knowledge_graph_builder.py . -o graph_report.md
+
+# 构建指定目录
+python3 src/knowledge_graph_builder.py /path/to/project -o report.md
+
+# 清空现有数据重新构建
+python3 src/knowledge_graph_builder.py . --clear -o report.md
+```
+
+##### 3. 高级选项
+
+```bash
+# 只分析 Java 文件
+python3 src/knowledge_graph_builder.py . -e .java -o java_graph.md
+
+# 导出统计数据
+python3 src/knowledge_graph_builder.py . -o report.md --export stats.json
+
+# 指定 Neo4j 连接参数
+python3 src/knowledge_graph_builder.py . \
+  --uri bolt://localhost:7687 \
+  --user neo4j \
+  --password password \
+  -o report.md
+```
+
+##### 4. 查询知识图谱
+
+在 Neo4j 浏览器中运行 Cypher 查询：
+
+```cypher
+# 查看所有类
+MATCH (c:Class) RETURN c.name, c.file_path LIMIT 10
+
+# 查看类的方法
+MATCH (c:Class)-[:HAS_METHOD]->(m:Method)
+RETURN c.name, collect(m.name) as methods
+
+# 查看继承关系
+MATCH (child:Class)-[:EXTENDS]->(parent:Class)
+RETURN child.name, parent.name
+
+# 查看方法调用链
+MATCH (m1:Method)-[:CALLS]->(m2:Method)
+RETURN m1.class_name + '.' + m1.name as caller,
+       m2.class_name + '.' + m2.name as callee
+```
+
+##### 5. Python API 使用
+
+```python
+from src.knowledge_graph_builder import KnowledgeGraphBuilder
+
+# 创建构建器
+builder = KnowledgeGraphBuilder(
+    neo4j_uri="bolt://localhost:7687",
+    neo4j_user="neo4j",
+    neo4j_password="password",
+    extensions=['.java', '.py']
+)
+
+# 构建知识图谱
+results = builder.build_graph(
+    root_dir='.',
+    clear_existing=True
+)
+
+# 生成报告
+builder.generate_report('graph_report.md')
+
+# 关闭连接
+builder.close()
+```
+
+**知识图谱特性**:
+- 🔍 自动代码结构提取 - 类、方法、继承关系等
+- 📊 图数据库存储 - Neo4j 知识图谱
+- 🔗 关系映射 - 继承、实现、调用关系
+- 📈 统计分析 - 详细的构建和图数据统计
+- 🎨 可视化查询 - Neo4j 浏览器可视化
+- 📝 报告生成 - 自动生成构建报告
+
+**支持的语言**:
+- Java
+- Python
+- JavaScript / TypeScript
+- C / C++
+- Go
+- Rust
+
+**图谱结构**:
+- **节点类型**: File, Class, Method, Interface
+- **关系类型**: CONTAINS, HAS_METHOD, EXTENDS, IMPLEMENTS, CALLS
+
+详细使用指南: [KNOWLEDGE_GRAPH_BUILDER_GUIDE.md](docs/guides/KNOWLEDGE_GRAPH_BUILDER_GUIDE.md)
+
 
 
 ## 示例输出
@@ -458,6 +661,19 @@ client = OllamaClient(model="qwen2.5:7b")  # 使用更大的模型
   - [x] 优化提示词模板 (结构化、量化)
   - [x] 工具调用缓存机制 (99.8% 加速)
   - [x] 并行工具调用支持 (66.7% 加速)
+- [x] **增量代码分析** ⚡⭐ - 智能检测变更，只分析需要的文件
+  - [x] Git 变更检测支持
+  - [x] 文件哈希检测支持
+  - [x] 分析结果缓存机制
+  - [x] 增量分析报告生成
+  - [x] 完整的使用文档和示例
+- [x] **代码知识图谱构建** 📊⭐ - 扫描代码工程并构建知识图谱
+  - [x] 多语言代码结构提取（Java, Python, JS等）
+  - [x] Neo4j 图数据库集成
+  - [x] 类、方法、继承关系映射
+  - [x] 图谱查询和可视化
+  - [x] 构建报告和统计导出
+  - [x] 完整的使用文档和示例
 
 ### 进行中 🚧
 
@@ -478,8 +694,6 @@ client = OllamaClient(model="qwen2.5:7b")  # 使用更大的模型
 
 - [ ] 多模型支持（GPT-4、Claude 等）
 - [ ] Web 界面集成智能代理
-- [ ] 增量代码分析
-- [ ] 代码知识图谱构建
 - [ ] 自动化测试覆盖率分析
 
 #### 长期计划 (3-6 月)
