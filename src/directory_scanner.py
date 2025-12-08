@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
 Directory Scanner - 递归扫描目录下的程序文件并使用 Ollama 进行分析
+支持函数调用链分析和递归审核
 """
 
 import os
 import sys
-from typing import List, Dict, Set
+import re
+from typing import List, Dict, Set, Optional, Pattern
 import json
 from datetime import datetime
 
@@ -13,6 +15,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from llm.ollama_client import OllamaClient
+from call_chain_analyzer import CallChainAnalyzer
 
 
 class DirectoryScanner:
@@ -35,12 +38,37 @@ class DirectoryScanner:
     }
     
     def __init__(self, root_dir: str, output_dir: str = None, extensions: List[str] = None,
-                 ignore_dirs: Set[str] = None, max_file_size: int = 1024 * 1024):
+                 ignore_dirs: Set[str] = None, max_file_size: int = 1024 * 1024,
+                 ollama_url: str = "http://localhost:11434", model: str = "qwen2.5:0.5b",
+                 dir_pattern: Optional[str] = None, file_pattern: Optional[str] = None,
+                 enable_call_chain: bool = False):
+        """
+        初始化目录扫描器
+        
+        Args:
+            root_dir: 要扫描的根目录
+            output_dir: 分析报告输出目录
+            extensions: 要扫描的文件扩展名列表
+            ignore_dirs: 要忽略的目录名称集合
+            max_file_size: 最大文件大小（字节）
+            ollama_url: Ollama 服务地址
+            model: 使用的模型名称
+            dir_pattern: 目录名正则表达式（匹配的目录会被扫描）
+            file_pattern: 文件名正则表达式（匹配的文件会被分析）
+            enable_call_chain: 是否启用函数调用链分析
+        """
         self.root_dir = os.path.abspath(root_dir)
         self.output_dir = output_dir
         self.extensions = extensions or list(self.SUPPORTED_EXTENSIONS.keys())
         self.ignore_dirs = ignore_dirs or self.DEFAULT_IGNORE_DIRS
         self.max_file_size = max_file_size
+        self.ollama_url = ollama_url
+        self.model = model
+        self.enable_call_chain = enable_call_chain
+        
+        # 编译正则表达式
+        self.dir_pattern: Optional[Pattern] = re.compile(dir_pattern) if dir_pattern else None
+        self.file_pattern: Optional[Pattern] = re.compile(file_pattern) if file_pattern else None
         
         if not os.path.isdir(self.root_dir):
             raise ValueError(f"目录不存在: {self.root_dir}")
@@ -49,20 +77,61 @@ class DirectoryScanner:
             os.makedirs(self.output_dir, exist_ok=True)
             print(f"✓ 报告将保存到: {self.output_dir}\n")
         
-        self.ollama_client = OllamaClient()
+        # 使用配置的 Ollama 地址和模型
+        self.ollama_client = OllamaClient(base_url=self.ollama_url, model=self.model)
+        print(f"🤖 Ollama 配置:")
+        print(f"   服务地址: {self.ollama_url}")
+        print(f"   模型名称: {self.model}")
+        
+        if self.enable_call_chain:
+            print(f"🔗 调用链分析: 已启用\n")
+        else:
+            print()
+        
         self.stats = {'total_files': 0, 'analyzed_files': 0, 'skipped_files': 0, 'failed_files': 0, 'total_size': 0}
+    
+    def _should_scan_directory(self, dir_name: str) -> bool:
+        """判断是否应该扫描该目录"""
+        # 如果在忽略列表中，不扫描
+        if dir_name in self.ignore_dirs:
+            return False
+        
+        # 如果设置了目录正则表达式，必须匹配
+        if self.dir_pattern:
+            return self.dir_pattern.search(dir_name) is not None
+        
+        return True
+    
+    def _should_analyze_file(self, file_name: str) -> bool:
+        """判断是否应该分析该文件"""
+        # 如果设置了文件正则表达式，必须匹配
+        if self.file_pattern:
+            return self.file_pattern.search(file_name) is not None
+        
+        return True
     
     def scan_directory(self) -> List[str]:
         found_files = []
         print(f"🔍 开始扫描目录: {self.root_dir}")
-        print(f"📝 支持的文件类型: {', '.join(self.extensions)}\n")
+        print(f"📝 支持的文件类型: {', '.join(self.extensions)}")
+        
+        if self.dir_pattern:
+            print(f"📁 目录过滤规则: {self.dir_pattern.pattern}")
+        if self.file_pattern:
+            print(f"📄 文件过滤规则: {self.file_pattern.pattern}")
+        print()
         
         for root, dirs, files in os.walk(self.root_dir):
-            dirs[:] = [d for d in dirs if d not in self.ignore_dirs]
+            # 过滤目录
+            dirs[:] = [d for d in dirs if self._should_scan_directory(d)]
             
             for file in files:
                 file_ext = os.path.splitext(file)[1].lower()
                 if file_ext not in self.extensions:
+                    continue
+                
+                # 检查文件名是否匹配正则表达式
+                if not self._should_analyze_file(file):
                     continue
                 
                 file_path = os.path.join(root, file)
@@ -103,13 +172,19 @@ class DirectoryScanner:
 5. **依赖关系** - 导入的库和模块、外部依赖
 
 请以 Markdown 格式输出分析报告，使用清晰的标题和列表。"""
-    
     def analyze_file(self, file_path: str) -> Dict:
         rel_path = os.path.relpath(file_path, self.root_dir)
         file_ext = os.path.splitext(file_path)[1].lower()
         language = self.SUPPORTED_EXTENSIONS.get(file_ext, 'Unknown')
         
-        result = {'file_path': rel_path, 'language': language, 'status': 'pending', 'analysis': None, 'error': None}
+        result = {
+            'file_path': rel_path, 
+            'language': language, 
+            'status': 'pending', 
+            'analysis': None, 
+            'error': None,
+            'call_chain': None
+        }
         
         print(f"{'='*80}")
         print(f"📄 分析文件: {rel_path}")
@@ -120,7 +195,16 @@ class DirectoryScanner:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
-            prompt = self.get_analysis_prompt(rel_path, content, language)
+            # 调用链分析
+            call_chain_info = None
+            if self.enable_call_chain:
+                print("🔗 正在分析函数调用链...")
+                call_chain_info = self._analyze_call_chain(content, file_path, language)
+                result['call_chain'] = call_chain_info
+                print(f"✓ 发现 {len(call_chain_info.get('functions', []))} 个函数\n")
+            
+            # 基础代码分析
+            prompt = self.get_analysis_prompt(rel_path, content, language, call_chain_info)
             print("🤖 正在调用 Ollama 进行分析...")
             analysis = self.ollama_client.generate_response(prompt)
             
@@ -135,7 +219,7 @@ class DirectoryScanner:
             print("\n")
             
             if self.output_dir:
-                self._save_analysis(rel_path, language, analysis)
+                self._save_analysis(rel_path, language, analysis, call_chain_info)
             
         except Exception as e:
             result['status'] = 'failed'
@@ -145,7 +229,88 @@ class DirectoryScanner:
         
         return result
     
-    def _save_analysis(self, file_path: str, language: str, analysis: str):
+    def _analyze_call_chain(self, content: str, file_path: str, language: str) -> Dict:
+        """
+        分析函数调用链
+        
+        Args:
+            content: 文件内容
+            file_path: 文件路径
+            language: 编程语言
+            
+        Returns:
+            调用链信息字典
+        """
+        analyzer = CallChainAnalyzer(language=language)
+        call_graph = analyzer.build_call_graph(content, file_path)
+        
+        # 生成调用链报告
+        call_chain_report = analyzer.generate_call_chain_report()
+        mermaid_diagram = analyzer.generate_mermaid_diagram()
+        
+        return {
+            'functions': call_graph['functions'],
+            'call_graph': call_graph['call_graph'],
+            'reverse_call_graph': call_graph['reverse_call_graph'],
+            'report': call_chain_report,
+            'mermaid': mermaid_diagram
+        }
+    
+    def get_analysis_prompt(self, file_path: str, content: str, language: str, 
+                           call_chain_info: Optional[Dict] = None) -> str:
+        """生成分析提示词，包含调用链信息"""
+        
+        base_prompt = f"""请分析以下 {language} 代码文件并提供详细的分析报告。
+
+文件路径: {file_path}
+编程语言: {language}
+
+代码内容:
+```{language.lower()}
+{content}
+```
+"""
+        
+        # 如果有调用链信息，添加到提示词中
+        if call_chain_info and call_chain_info.get('functions'):
+            base_prompt += f"""
+
+## 函数调用链信息
+
+该文件包含 {len(call_chain_info['functions'])} 个函数：
+"""
+            for func in call_chain_info['functions'][:10]:  # 只显示前10个
+                base_prompt += f"- `{func['signature']}` (第 {func['start_line']}-{func['end_line']} 行)\n"
+            
+            if call_chain_info.get('call_graph'):
+                base_prompt += "\n调用关系:\n"
+                for caller, callees in list(call_chain_info['call_graph'].items())[:5]:
+                    base_prompt += f"- `{caller}` 调用: {', '.join(f'`{c}`' for c in callees)}\n"
+        
+        base_prompt += """
+
+请从以下几个方面进行分析：
+
+1. **代码概述** - 文件的主要功能和用途，核心类、函数或模块的说明
+2. **代码质量** - 代码结构和组织、命名规范、注释完整性、代码复杂度评估
+3. **潜在问题** - 可能的 bug 或逻辑错误、性能问题、安全隐患、代码异味
+4. **改进建议** - 重构建议、性能优化建议、最佳实践建议、可维护性改进
+5. **依赖关系** - 导入的库和模块、外部依赖
+"""
+        
+        if call_chain_info:
+            base_prompt += """6. **函数调用链分析** - 基于上述调用链信息，分析：
+   - 关键函数的调用路径
+   - 可能的循环调用或深度调用问题
+   - 函数职责是否单一
+   - 调用层次是否合理
+"""
+        
+        base_prompt += "\n请以 Markdown 格式输出分析报告，使用清晰的标题和列表。"
+        
+        return base_prompt
+    
+    def _save_analysis(self, file_path: str, language: str, analysis: str, call_chain_info: Optional[Dict] = None):
         safe_path = file_path.replace(os.sep, '_').replace('.', '_')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = os.path.join(self.output_dir, f"{safe_path}_analysis_{timestamp}.md")
@@ -155,10 +320,40 @@ class DirectoryScanner:
             f.write(f"**文件路径**: `{file_path}`\n\n")
             f.write(f"**编程语言**: {language}\n\n")
             f.write(f"**分析时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            
+            # 添加调用链信息
+            if call_chain_info:
+                f.write(f"**函数数量**: {len(call_chain_info.get('functions', []))}\n\n")
+            
             f.write("---\n\n")
+            
+            # 如果有调用链信息，先写入调用链报告
+            if call_chain_info:
+                f.write("## 📊 函数调用链分析\n\n")
+                f.write(call_chain_info.get('report', ''))
+                f.write("\n\n### 调用关系图\n\n")
+                f.write(call_chain_info.get('mermaid', ''))
+                f.write("\n\n---\n\n")
+            
+            # 写入代码分析结果
+            f.write("## 🤖 AI 代码分析\n\n")
             f.write(analysis)
         
         print(f"✓ 分析报告已保存: {output_file}\n")
+        
+        # 如果有调用链信息，同时保存JSON格式
+        if call_chain_info:
+            json_file = os.path.join(self.output_dir, f"{safe_path}_callchain_{timestamp}.json")
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'file_path': file_path,
+                    'language': language,
+                    'timestamp': datetime.now().isoformat(),
+                    'functions': call_chain_info.get('functions', []),
+                    'call_graph': call_chain_info.get('call_graph', {}),
+                    'reverse_call_graph': call_chain_info.get('reverse_call_graph', {})
+                }, f, ensure_ascii=False, indent=2)
+            print(f"✓ 调用链数据已保存: {json_file}\n")
     
     def analyze_all(self) -> List[Dict]:
         files = self.scan_directory()
@@ -230,12 +425,58 @@ class DirectoryScanner:
 def main():
     import argparse
     
-    parser = argparse.ArgumentParser(description='递归扫描目录下的程序文件并使用 Ollama 进行分析')
+    parser = argparse.ArgumentParser(
+        description='递归扫描目录下的程序文件并使用 Ollama 进行分析',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+  # 基本用法
+  python directory_scanner.py /path/to/project -o reports
+  
+  # 使用远程 Ollama 服务
+  python directory_scanner.py /path/to/project --ollama-url http://192.168.1.100:11434
+  
+  # 使用不同的模型
+  python directory_scanner.py /path/to/project --model qwen2.5:7b
+  
+  # 只分析特定扩展名的文件
+  python directory_scanner.py /path/to/project -e .py .java
+  
+  # 使用正则表达式过滤文件（只分析包含 "test" 的文件）
+  python directory_scanner.py /path/to/project --file-pattern ".*test.*"
+  
+  # 使用正则表达式过滤目录（只扫描 src 和 lib 目录）
+  python directory_scanner.py /path/to/project --dir-pattern "^(src|lib)$"
+  
+  # 组合使用
+  python directory_scanner.py /path/to/project \\
+    --ollama-url http://192.168.1.100:11434 \\
+    --model qwen2.5:7b \\
+    -e .py .java \\
+    --file-pattern ".*Service.*" \\
+    -o reports
+        """
+    )
+    
     parser.add_argument('directory', help='要扫描的目录路径')
     parser.add_argument('-o', '--output', dest='output_dir', help='分析报告输出目录')
     parser.add_argument('-e', '--extensions', nargs='+', help='要扫描的文件扩展名（例如: .py .java .js）')
     parser.add_argument('--max-size', type=int, default=1024 * 1024, help='最大文件大小（字节），默认 1MB')
     parser.add_argument('--ignore-dirs', nargs='+', help='要忽略的目录名称')
+    
+    # Ollama 配置参数
+    parser.add_argument('--ollama-url', default='http://localhost:11434', 
+                       help='Ollama 服务地址（默认: http://localhost:11434）')
+    parser.add_argument('--model', default='qwen2.5:0.5b',
+                       help='使用的模型名称（默认: qwen2.5:0.5b）')
+    
+    # 正则表达式过滤参数
+    parser.add_argument('--dir-pattern', help='目录名正则表达式（只扫描匹配的目录）')
+    parser.add_argument('--file-pattern', help='文件名正则表达式（只分析匹配的文件）')
+    
+    # 调用链分析参数
+    parser.add_argument('--enable-call-chain', action='store_true',
+                       help='启用函数调用链分析（生成调用图和递归审核）')
     
     args = parser.parse_args()
     
@@ -245,7 +486,12 @@ def main():
             output_dir=args.output_dir,
             extensions=args.extensions,
             ignore_dirs=set(args.ignore_dirs) if args.ignore_dirs else None,
-            max_file_size=args.max_size
+            max_file_size=args.max_size,
+            ollama_url=args.ollama_url,
+            model=args.model,
+            dir_pattern=args.dir_pattern,
+            file_pattern=args.file_pattern,
+            enable_call_chain=args.enable_call_chain
         )
         scanner.analyze_all()
         
@@ -254,8 +500,11 @@ def main():
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ 错误: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
+
