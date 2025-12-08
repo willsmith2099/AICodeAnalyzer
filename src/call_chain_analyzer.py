@@ -14,14 +14,40 @@ import json
 class CallChainAnalyzer:
     """函数调用链分析器"""
     
-    def __init__(self, language: str = 'Java'):
+    # Java 默认方法模式（需要过滤的方法）
+    JAVA_DEFAULT_METHOD_PATTERNS = [
+        r'^get[A-Z]',  # getter方法
+        r'^set[A-Z]',  # setter方法
+        r'^is[A-Z]',   # boolean getter
+        r'^has[A-Z]',  # has方法
+    ]
+    
+    # Java 常见工具方法（需要过滤的调用）
+    JAVA_COMMON_METHODS = {
+        # 集合操作
+        'add', 'remove', 'clear', 'contains', 'isEmpty', 'size',
+        'put', 'get', 'keySet', 'values', 'entrySet',
+        # 字符串操作
+        'toString', 'equals', 'hashCode', 'compareTo',
+        'length', 'substring', 'indexOf', 'trim', 'split',
+        # 对象操作
+        'clone', 'getClass', 'notify', 'notifyAll', 'wait',
+        # 流操作
+        'stream', 'filter', 'map', 'collect', 'forEach',
+        # 其他常见方法
+        'valueOf', 'parse', 'format', 'append',
+    }
+    
+    def __init__(self, language: str = 'Java', filter_default_methods: bool = True):
         """
         初始化调用链分析器
         
         Args:
             language: 编程语言（Java, Python, JavaScript等）
+            filter_default_methods: 是否过滤默认方法（getter/setter等）
         """
         self.language = language
+        self.filter_default_methods = filter_default_methods
         self.functions = {}  # 函数定义: {function_name: {file, line, code}}
         self.call_graph = defaultdict(set)  # 调用图: {caller: {callees}}
         self.reverse_call_graph = defaultdict(set)  # 反向调用图: {callee: {callers}}
@@ -62,6 +88,10 @@ class CallChainAnalyzer:
             
             signature = f"{return_type} {method_name}({params})"
             
+            # 检查是否应该过滤此方法
+            if self.filter_default_methods and self._should_filter_java_method(method_name, method_code):
+                continue
+            
             functions.append({
                 'name': method_name,
                 'signature': signature,
@@ -74,6 +104,27 @@ class CallChainAnalyzer:
             })
         
         return functions
+    
+    def _should_filter_java_method(self, method_name: str, method_code: str) -> bool:
+        """
+        判断是否应该过滤Java方法
+        
+        Args:
+            method_name: 方法名
+            method_code: 方法代码
+            
+        Returns:
+            是否应该过滤
+        """
+        # 检查是否匹配默认方法模式
+        for pattern in self.JAVA_DEFAULT_METHOD_PATTERNS:
+            if re.match(pattern, method_name):
+                # 进一步检查：如果方法体很简单（少于5行），则过滤
+                code_lines = [l.strip() for l in method_code.split('\n') if l.strip() and not l.strip().startswith('//')]
+                if len(code_lines) <= 5:
+                    return True
+        
+        return False
     
     def extract_functions_python(self, content: str, file_path: str) -> List[Dict]:
         """
@@ -180,7 +231,25 @@ class CallChainAnalyzer:
             for match in call_pattern.finditer(function_code):
                 method_name = match.group(1)
                 # 过滤掉关键字和构造函数
-                if method_name not in ['if', 'for', 'while', 'switch', 'catch', 'new', 'return']:
+                if method_name in ['if', 'for', 'while', 'switch', 'catch', 'new', 'return']:
+                    continue
+                
+                # 如果启用过滤，过滤掉getter/setter和常见方法
+                if self.filter_default_methods:
+                    # 过滤getter/setter
+                    is_default = False
+                    for pattern in self.JAVA_DEFAULT_METHOD_PATTERNS:
+                        if re.match(pattern, method_name):
+                            is_default = True
+                            break
+                    
+                    # 过滤常见工具方法
+                    if method_name in self.JAVA_COMMON_METHODS:
+                        is_default = True
+                    
+                    if not is_default:
+                        calls.add(method_name)
+                else:
                     calls.add(method_name)
         
         elif language == 'Python':
