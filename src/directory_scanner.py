@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from llm.ollama_client import OllamaClient
 from call_chain_analyzer import CallChainAnalyzer
+from ast_analyzer import ASTAnalyzer
 
 
 class DirectoryScanner:
@@ -41,7 +42,7 @@ class DirectoryScanner:
                  ignore_dirs: Set[str] = None, max_file_size: int = 1024 * 1024,
                  ollama_url: str = "http://localhost:11434", model: str = "qwen2.5:0.5b",
                  dir_pattern: Optional[str] = None, file_pattern: Optional[str] = None,
-                 enable_call_chain: bool = False):
+                 enable_call_chain: bool = False, enable_ast: bool = False):
         """
         初始化目录扫描器
         
@@ -56,6 +57,7 @@ class DirectoryScanner:
             dir_pattern: 目录名正则表达式（匹配的目录会被扫描）
             file_pattern: 文件名正则表达式（匹配的文件会被分析）
             enable_call_chain: 是否启用函数调用链分析
+            enable_ast: 是否启用AST语法分析
         """
         self.root_dir = os.path.abspath(root_dir)
         self.output_dir = output_dir
@@ -65,6 +67,7 @@ class DirectoryScanner:
         self.ollama_url = ollama_url
         self.model = model
         self.enable_call_chain = enable_call_chain
+        self.enable_ast = enable_ast
         
         # 编译正则表达式
         self.dir_pattern: Optional[Pattern] = re.compile(dir_pattern) if dir_pattern else None
@@ -84,7 +87,11 @@ class DirectoryScanner:
         print(f"   模型名称: {self.model}")
         
         if self.enable_call_chain:
-            print(f"🔗 调用链分析: 已启用\n")
+            print(f"🔗 调用链分析: 已启用")
+        if self.enable_ast:
+            print(f"🔬 AST 语法分析: 已启用")
+        if not self.enable_call_chain and not self.enable_ast:
+            print()
         else:
             print()
         
@@ -203,8 +210,17 @@ class DirectoryScanner:
                 result['call_chain'] = call_chain_info
                 print(f"✓ 发现 {len(call_chain_info.get('functions', []))} 个函数\n")
             
+            # AST 语法分析
+            ast_info = None
+            if self.enable_ast:
+                print("🔬 正在进行 AST 语法分析...")
+                ast_info = self._analyze_ast(content, file_path, language)
+                result['ast_analysis'] = ast_info
+                if ast_info:
+                    print(f"✓ 提取了 {len(ast_info.get('classes', []))} 个类, {len(ast_info.get('functions', []))} 个函数\n")
+            
             # 基础代码分析
-            prompt = self.get_analysis_prompt(rel_path, content, language, call_chain_info)
+            prompt = self.get_analysis_prompt(rel_path, content, language, call_chain_info, ast_info)
             print("🤖 正在调用 Ollama 进行分析...")
             analysis = self.ollama_client.generate_response(prompt)
             
@@ -219,7 +235,7 @@ class DirectoryScanner:
             print("\n")
             
             if self.output_dir:
-                self._save_analysis(rel_path, language, analysis, call_chain_info)
+                self._save_analysis(rel_path, language, analysis, call_chain_info, ast_info)
             
         except Exception as e:
             result['status'] = 'failed'
@@ -256,9 +272,41 @@ class DirectoryScanner:
             'mermaid': mermaid_diagram
         }
     
+    def _analyze_ast(self, content: str, file_path: str, language: str) -> Optional[Dict]:
+        """
+        进行 AST 语法分析
+        
+        Args:
+            content: 文件内容
+            file_path: 文件路径
+            language: 编程语言
+            
+        Returns:
+            AST 分析信息字典
+        """
+        try:
+            analyzer = ASTAnalyzer(language=language)
+            ast_result = analyzer.analyze_file(file_path)
+            
+            # 构建依赖图（如果有多个文件可以传入）
+            # dependency_graph = analyzer.build_dependency_graph([file_path])
+            
+            return {
+                'classes': ast_result.get('classes', []),
+                'functions': ast_result.get('functions', []),
+                'imports': ast_result.get('imports', []),
+                'calls': ast_result.get('calls', []),
+                'package': ast_result.get('package'),
+                'interfaces': ast_result.get('interfaces', [])
+            }
+        except Exception as e:
+            print(f"⚠️  AST 分析失败: {e}")
+            return None
+    
     def get_analysis_prompt(self, file_path: str, content: str, language: str, 
-                           call_chain_info: Optional[Dict] = None) -> str:
-        """生成分析提示词，包含调用链信息"""
+                           call_chain_info: Optional[Dict] = None,
+                           ast_info: Optional[Dict] = None) -> str:
+        """生成分析提示词，包含调用链信息和AST信息"""
         
         base_prompt = f"""请分析以下 {language} 代码文件并提供详细的分析报告。
 
@@ -270,6 +318,39 @@ class DirectoryScanner:
 {content}
 ```
 """
+        
+        # 如果有AST分析信息，添加到提示词中
+        if ast_info:
+            base_prompt += f"""
+
+## AST 语法结构分析
+
+"""
+            if ast_info.get('package'):
+                base_prompt += f"**包名**: `{ast_info['package']}`\n\n"
+            
+            if ast_info.get('classes'):
+                base_prompt += f"**类定义** ({len(ast_info['classes'])} 个):\n"
+                for cls in ast_info['classes'][:10]:
+                    base_prompt += f"- `{cls['name']}`"
+                    if cls.get('parent'):
+                        base_prompt += f" extends `{cls['parent']}`"
+                    if cls.get('interfaces'):
+                        base_prompt += f" implements `{', '.join(cls['interfaces'])}`"
+                    base_prompt += f" (第 {cls.get('line', 'N/A')} 行)\n"
+                base_prompt += "\n"
+            
+            if ast_info.get('functions'):
+                base_prompt += f"**函数定义** ({len(ast_info['functions'])} 个):\n"
+                for func in ast_info['functions'][:10]:
+                    base_prompt += f"- `{func['name']}` (第 {func.get('line', 'N/A')} 行)\n"
+                base_prompt += "\n"
+            
+            if ast_info.get('imports'):
+                base_prompt += f"**导入依赖** ({len(ast_info['imports'])} 个):\n"
+                for imp in ast_info['imports'][:15]:
+                    base_prompt += f"- `{imp}`\n"
+                base_prompt += "\n"
         
         # 如果有调用链信息，添加到提示词中
         if call_chain_info and call_chain_info.get('functions'):
@@ -298,8 +379,16 @@ class DirectoryScanner:
 5. **依赖关系** - 导入的库和模块、外部依赖
 """
         
+        if ast_info:
+            base_prompt += """6. **AST 结构分析** - 基于上述 AST 信息，分析：
+   - 类的设计和职责划分
+   - 继承和接口实现的合理性
+   - 依赖注入和解耦程度
+   - 模块化程度
+"""
+        
         if call_chain_info:
-            base_prompt += """6. **函数调用链分析** - 基于上述调用链信息，分析：
+            base_prompt += """7. **函数调用链分析** - 基于上述调用链信息，分析：
    - 关键函数的调用路径
    - 可能的循环调用或深度调用问题
    - 函数职责是否单一
@@ -310,7 +399,8 @@ class DirectoryScanner:
         
         return base_prompt
     
-    def _save_analysis(self, file_path: str, language: str, analysis: str, call_chain_info: Optional[Dict] = None):
+    def _save_analysis(self, file_path: str, language: str, analysis: str, 
+                      call_chain_info: Optional[Dict] = None, ast_info: Optional[Dict] = None):
         safe_path = file_path.replace(os.sep, '_').replace('.', '_')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = os.path.join(self.output_dir, f"{safe_path}_analysis_{timestamp}.md")
@@ -321,13 +411,43 @@ class DirectoryScanner:
             f.write(f"**编程语言**: {language}\n\n")
             f.write(f"**分析时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             
-            # 添加调用链信息
+            # 添加统计信息
             if call_chain_info:
                 f.write(f"**函数数量**: {len(call_chain_info.get('functions', []))}\n\n")
+            if ast_info:
+                f.write(f"**类数量**: {len(ast_info.get('classes', []))}\n\n")
+                f.write(f"**导入数量**: {len(ast_info.get('imports', []))}\n\n")
             
             f.write("---\n\n")
             
-            # 如果有调用链信息，先写入调用链报告
+            # 如果有AST信息，先写入AST分析
+            if ast_info:
+                f.write("## 🔬 AST 语法结构分析\n\n")
+                
+                if ast_info.get('package'):
+                    f.write(f"**包名**: `{ast_info['package']}`\n\n")
+                
+                if ast_info.get('classes'):
+                    f.write(f"### 类定义 ({len(ast_info['classes'])} 个)\n\n")
+                    for cls in ast_info['classes']:
+                        f.write(f"#### `{cls['name']}`\n")
+                        if cls.get('parent'):
+                            f.write(f"- 继承: `{cls['parent']}`\n")
+                        if cls.get('interfaces'):
+                            f.write(f"- 实现接口: `{', '.join(cls['interfaces'])}`\n")
+                        if cls.get('methods'):
+                            f.write(f"- 方法数: {len(cls['methods'])}\n")
+                        f.write("\n")
+                
+                if ast_info.get('imports'):
+                    f.write(f"### 导入依赖 ({len(ast_info['imports'])} 个)\n\n")
+                    for imp in ast_info['imports']:
+                        f.write(f"- `{imp}`\n")
+                    f.write("\n")
+                
+                f.write("---\n\n")
+            
+            # 如果有调用链信息，写入调用链报告
             if call_chain_info:
                 f.write("## 📊 函数调用链分析\n\n")
                 f.write(call_chain_info.get('report', ''))
@@ -354,6 +474,18 @@ class DirectoryScanner:
                     'reverse_call_graph': call_chain_info.get('reverse_call_graph', {})
                 }, f, ensure_ascii=False, indent=2)
             print(f"✓ 调用链数据已保存: {json_file}\n")
+        
+        # 如果有AST信息，保存JSON格式
+        if ast_info:
+            ast_json_file = os.path.join(self.output_dir, f"{safe_path}_ast_{timestamp}.json")
+            with open(ast_json_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'file_path': file_path,
+                    'language': language,
+                    'timestamp': datetime.now().isoformat(),
+                    'ast_analysis': ast_info
+                }, f, ensure_ascii=False, indent=2)
+            print(f"✓ AST 数据已保存: {ast_json_file}\n")
     
     def analyze_all(self) -> List[Dict]:
         files = self.scan_directory()
@@ -474,9 +606,11 @@ def main():
     parser.add_argument('--dir-pattern', help='目录名正则表达式（只扫描匹配的目录）')
     parser.add_argument('--file-pattern', help='文件名正则表达式（只分析匹配的文件）')
     
-    # 调用链分析参数
+    # 高级分析参数
     parser.add_argument('--enable-call-chain', action='store_true',
                        help='启用函数调用链分析（生成调用图和递归审核）')
+    parser.add_argument('--enable-ast', action='store_true',
+                       help='启用AST语法分析（提取类、方法、依赖关系）')
     
     args = parser.parse_args()
     
@@ -491,7 +625,8 @@ def main():
             model=args.model,
             dir_pattern=args.dir_pattern,
             file_pattern=args.file_pattern,
-            enable_call_chain=args.enable_call_chain
+            enable_call_chain=args.enable_call_chain,
+            enable_ast=args.enable_ast
         )
         scanner.analyze_all()
         
