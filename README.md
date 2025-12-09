@@ -705,6 +705,418 @@ client = OllamaClient(model="qwen2.5:7b")  # 使用更大的模型
 - [ ] 企业级部署方案
 
 
+## 📚 命令行使用指南
+
+本项目提供了多个强大的命令行工具，以下是详细的使用说明和复杂示例。
+
+### 1. directory_scanner.py - 目录扫描和代码分析
+
+**功能**: 递归扫描目录，分析代码并生成报告
+
+#### 基本用法
+```bash
+# 最简单的用法
+python src/directory_scanner.py /path/to/project -o reports
+
+# 指定文件类型
+python src/directory_scanner.py /path/to/project -e .java .py -o reports
+```
+
+#### 高级用法
+```bash
+# 使用远程 Ollama 服务和特定模型
+python src/directory_scanner.py /path/to/project \
+  --ollama-url http://192.168.1.100:11434 \
+  --model qwen2.5:7b \
+  -e .java \
+  -o reports
+
+# 使用正则表达式过滤文件和目录
+python src/directory_scanner.py /path/to/backend \
+  --dir-pattern "^(src|lib|core)$" \
+  --file-pattern ".*Service.*|.*Controller.*" \
+  -e .java \
+  -o service_reports
+
+# 启用调用链分析
+python src/directory_scanner.py /path/to/project \
+  --enable-call-chain \
+  --file-pattern ".*ServiceImpl.*" \
+  -e .java \
+  -o callchain_reports
+
+# 完整功能组合
+python src/directory_scanner.py /path/to/backend/src \
+  --ollama-url http://localhost:11434 \
+  --model qwen2.5:0.5b \
+  --dir-pattern ".*service.*" \
+  --file-pattern ".*Impl.*" \
+  --enable-call-chain \
+  --max-size 2097152 \
+  --ignore-dirs test build target \
+  -e .java \
+  -o comprehensive_reports
+```
+
+### 2. ast_analyzer.py - AST 静态分析
+
+**功能**: 基于 AST 的静态代码分析，提取类、方法、依赖关系
+
+#### 基本用法
+```bash
+# 分析单个 Python 文件
+python src/ast_analyzer.py
+
+# 在代码中使用
+python -c "
+from src.ast_analyzer import ASTAnalyzer
+analyzer = ASTAnalyzer(language='Python')
+result = analyzer.analyze_file('src/directory_scanner.py')
+print(f'类数量: {len(result[\"classes\"])}')
+"
+```
+
+#### 高级用法
+```python
+# 构建完整依赖图
+from src.ast_analyzer import ASTAnalyzer
+
+analyzer = ASTAnalyzer(language='Java')
+files = ['Service1.java', 'Service2.java', 'Service3.java']
+dependency_graph = analyzer.build_dependency_graph(files)
+
+# 追踪影响链
+changed_items = ['UserService.java::UserService.createUser']
+impact = analyzer.trace_impact(changed_items, max_depth=5)
+print(f"受影响项目: {impact['total_affected']}")
+```
+
+### 3. git_change_analyzer.py - Git 变更影响分析
+
+**功能**: 分析 Git 变更并追踪影响范围
+
+#### 基本用法
+```bash
+# 分析最近一次提交的影响
+python src/git_change_analyzer.py . HEAD~1..HEAD
+
+# 分析指定 commit 范围
+python src/git_change_analyzer.py /path/to/repo main..feature-branch
+
+# 分析最近 5 次提交
+python src/git_change_analyzer.py . HEAD~5..HEAD
+```
+
+#### 高级用法
+```bash
+# 分析 Java 项目的变更影响
+python src/git_change_analyzer.py /path/to/java-project \
+  HEAD~3..HEAD \
+  --language Java
+
+# 在代码中使用
+python -c "
+from src.git_change_analyzer import GitChangeAnalyzer
+
+analyzer = GitChangeAnalyzer('.', language='Python')
+result = analyzer.analyze_change_impact('HEAD~1..HEAD', max_depth=5)
+analyzer.generate_report(result, 'impact_report.md')
+print(f'摘要: {result[\"summary\"]}')
+"
+```
+
+### 4. call_chain_analyzer.py - 函数调用链分析
+
+**功能**: 提取函数调用关系，生成调用链和 Mermaid 图
+
+#### 基本用法
+```bash
+# 运行内置测试
+python src/call_chain_analyzer.py
+```
+
+#### 高级用法
+```python
+# 分析 Java 文件的调用链
+from src.call_chain_analyzer import CallChainAnalyzer
+
+analyzer = CallChainAnalyzer(language='Java', filter_default_methods=True)
+result = analyzer.build_call_graph(java_code, 'UserService.java')
+
+# 生成报告
+report = analyzer.generate_call_chain_report()
+mermaid = analyzer.generate_mermaid_diagram()
+
+print(report)
+print(mermaid)
+```
+
+### 5. incremental_analyzer.py - 增量代码分析
+
+**功能**: 只分析变更的文件，提高效率
+
+#### 基本用法
+```bash
+# 增量分析当前目录
+python src/incremental_analyzer.py /path/to/project -o incremental_reports
+
+# 指定缓存目录
+python src/incremental_analyzer.py /path/to/project \
+  -o reports \
+  --cache-dir .cache
+```
+
+#### 高级用法
+```bash
+# 强制重新分析所有文件
+python src/incremental_analyzer.py /path/to/project \
+  -o reports \
+  --force
+
+# 只分析特定类型的文件
+python src/incremental_analyzer.py /path/to/backend \
+  -e .java .kt \
+  --file-pattern ".*Service.*" \
+  -o service_incremental
+
+# 使用远程 Ollama
+python src/incremental_analyzer.py /path/to/project \
+  --ollama-url http://192.168.1.100:11434 \
+  --model qwen2.5:7b \
+  -o reports
+```
+
+### 6. knowledge_graph_builder.py - 知识图谱构建
+
+**功能**: 构建代码知识图谱并存储到 Neo4j
+
+#### 基本用法
+```bash
+# 构建知识图谱（需要 Neo4j 运行）
+python src/knowledge_graph_builder.py /path/to/project
+
+# 指定 Neo4j 连接
+python src/knowledge_graph_builder.py /path/to/project \
+  --neo4j-uri bolt://localhost:7687 \
+  --neo4j-user neo4j \
+  --neo4j-password password
+```
+
+#### 高级用法
+```bash
+# 只分析特定文件类型
+python src/knowledge_graph_builder.py /path/to/backend \
+  -e .java \
+  --file-pattern ".*Service.*"
+
+# 清空现有图谱并重建
+python src/knowledge_graph_builder.py /path/to/project \
+  --clear-graph \
+  -e .java .py
+
+# 批量处理多个项目
+for project in project1 project2 project3; do
+  python src/knowledge_graph_builder.py "/path/to/$project" \
+    --neo4j-uri bolt://localhost:7687 \
+    -e .java
+done
+```
+
+### 7. analyze_java.py - Java 代码分析
+
+**功能**: 专门分析 Java 代码文件
+
+#### 基本用法
+```bash
+# 分析单个 Java 文件
+python src/analyze_java.py /path/to/Service.java
+
+# 分析并保存报告
+python src/analyze_java.py /path/to/Service.java -o reports
+```
+
+#### 高级用法
+```bash
+# 使用特定模型
+python src/analyze_java.py /path/to/Service.java \
+  --model qwen2.5:7b \
+  -o detailed_reports
+
+# 批量分析
+find /path/to/backend -name "*Service.java" | while read file; do
+  python src/analyze_java.py "$file" -o java_reports
+done
+```
+
+### 8. analyze_impact.py - 影响分析
+
+**功能**: 分析代码变更的影响范围
+
+#### 基本用法
+```bash
+# 分析 Git 仓库的影响
+python src/analyze_impact.py /path/to/repo
+
+# 指定 commit 范围
+python src/analyze_impact.py /path/to/repo \
+  --commit-range HEAD~5..HEAD
+```
+
+#### 高级用法
+```bash
+# 分析特定文件的影响
+python src/analyze_impact.py /path/to/repo \
+  --files src/service/UserService.java src/controller/UserController.java
+
+# 生成详细报告
+python src/analyze_impact.py /path/to/repo \
+  --commit-range main..feature-branch \
+  --output impact_analysis.md \
+  --max-depth 10
+```
+
+### 9. intelligent_scanner.py - 智能扫描器
+
+**功能**: 智能识别项目类型并自动选择分析策略
+
+#### 基本用法
+```bash
+# 智能扫描项目
+python src/intelligent_scanner.py /path/to/project -o smart_reports
+```
+
+#### 高级用法
+```bash
+# 指定项目类型
+python src/intelligent_scanner.py /path/to/project \
+  --project-type java-spring \
+  -o reports
+
+# 启用所有高级功能
+python src/intelligent_scanner.py /path/to/backend \
+  --enable-call-chain \
+  --enable-knowledge-graph \
+  --enable-incremental \
+  --neo4j-uri bolt://localhost:7687 \
+  -o comprehensive_analysis
+
+# 自定义分析策略
+python src/intelligent_scanner.py /path/to/project \
+  --focus-on security,performance,maintainability \
+  --exclude-patterns "test/*,build/*" \
+  -o focused_reports
+```
+
+## 🎯 实战场景示例
+
+### 场景 1: 代码审查工作流
+
+```bash
+# 1. 分析最近的变更
+python src/git_change_analyzer.py . HEAD~1..HEAD
+
+# 2. 扫描变更的文件
+python src/directory_scanner.py . \
+  --file-pattern "$(git diff --name-only HEAD~1..HEAD | tr '\n' '|')" \
+  --enable-call-chain \
+  -o review_reports
+
+# 3. 生成影响分析
+python src/analyze_impact.py . --commit-range HEAD~1..HEAD
+```
+
+### 场景 2: 大型项目重构
+
+```bash
+# 1. 构建知识图谱
+python src/knowledge_graph_builder.py /path/to/project \
+  --clear-graph \
+  -e .java
+
+# 2. 分析调用链
+python src/directory_scanner.py /path/to/project \
+  --enable-call-chain \
+  --file-pattern ".*Service.*|.*Repository.*" \
+  -e .java \
+  -o refactor_analysis
+
+# 3. 追踪影响范围
+python src/ast_analyzer.py  # 在代码中使用追踪功能
+```
+
+### 场景 3: 持续集成 (CI/CD)
+
+```bash
+#!/bin/bash
+# ci-analysis.sh
+
+# 增量分析变更的代码
+python src/incremental_analyzer.py . \
+  --cache-dir .ci-cache \
+  -o ci_reports
+
+# 如果有新的问题，返回非零退出码
+if grep -q "严重问题" ci_reports/*.md; then
+  echo "发现严重问题，构建失败"
+  exit 1
+fi
+
+echo "代码分析通过"
+exit 0
+```
+
+### 场景 4: 多项目批量分析
+
+```bash
+#!/bin/bash
+# batch-analyze.sh
+
+PROJECTS=(
+  "/path/to/project1"
+  "/path/to/project2"
+  "/path/to/project3"
+)
+
+for project in "${PROJECTS[@]}"; do
+  echo "分析项目: $project"
+  
+  python src/intelligent_scanner.py "$project" \
+    --enable-call-chain \
+    --enable-knowledge-graph \
+    -o "reports/$(basename $project)" \
+    2>&1 | tee "logs/$(basename $project).log"
+done
+
+echo "所有项目分析完成"
+```
+
+## 🔧 环境变量配置
+
+可以通过环境变量配置默认参数：
+
+```bash
+# Ollama 配置
+export OLLAMA_API_URL="http://localhost:11434"
+export OLLAMA_MODEL="qwen2.5:0.5b"
+
+# Neo4j 配置
+export NEO4J_URI="bolt://localhost:7687"
+export NEO4J_USER="neo4j"
+export NEO4J_PASSWORD="password"
+
+# 然后直接运行命令
+python src/directory_scanner.py /path/to/project -o reports
+```
+
+## 📖 更多示例
+
+查看以下文件获取更多示例：
+- [命令行示例脚本](examples/directory_scanner_examples.sh)
+- [Python API 示例](examples/directory_scanner_api_demo.py)
+- [AST 分析示例](examples/ast_analysis_demo.py)
+- [增量分析示例](examples/incremental_analyzer_demo.py)
+- [知识图谱示例](examples/knowledge_graph_demo.py)
+
 ## 许可证
 
 MIT License
